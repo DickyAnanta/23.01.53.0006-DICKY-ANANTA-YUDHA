@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manajemen Wisata</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f8fafc;
+      }
+      .table img {
+        border-radius: 8px;
+      }
+      .modal-header {
+        background: #198754;
+        color: white;
+      }
+    </style>
+  </head>
+
+  <body class="p-4">
+    <div class="container">
+      <h3 class="mb-4 text-success fw-bold">📍 Manajemen Wisata</h3>
+
+      <div id="dataContainer"></div>
+    </div>
+
+    <!-- Modal Tambah/Edit -->
+    <div class="modal fade" id="modalForm" tabindex="-1">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Tambah / Edit Wisata</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="formWisata">
+              <input type="hidden" id="id" />
+
+              <div class="mb-3">
+                <label class="form-label">Kategori Wisata</label>
+                <select id="id_kategori" class="form-select" required></select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Nama Wisata</label>
+                <input id="nama_wisata" class="form-control" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Lokasi</label>
+                <input id="lokasi" class="form-control" required />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Deskripsi</label>
+                <textarea
+                  id="deskripsi"
+                  class="form-control"
+                  rows="3"
+                ></textarea>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Gambar</label>
+                <input
+                  id="gambar"
+                  class="form-control"
+                  type="text"
+                  placeholder="contoh.jpg"
+                />
+              </div>
+
+              <div class="text-end">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                >
+                  Batal
+                </button>
+                <button type="submit" class="btn btn-success">Simpan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      const API_BASE = "http://localhost/pariwisata_api/api.php/records/";
+      const modal = new bootstrap.Modal(document.getElementById("modalForm"));
+
+      async function getKategori() {
+        const res = await fetch(API_BASE + "kategori_wisata");
+        const data = await res.json();
+        return data.records || [];
+      }
+
+      async function loadDropdownKategori(selected = null) {
+        const list = await getKategori();
+        const select = document.getElementById("id_kategori");
+        select.innerHTML = '<option value="">-- Pilih Kategori --</option>';
+        list.forEach((k) => {
+          select.innerHTML += `<option value="${k.id}" ${
+            selected == k.id ? "selected" : ""
+          }>${k.nama_kategori}</option>`;
+        });
+      }
+
+      async function loadData() {
+        const res = await fetch(API_BASE + "wisata");
+        const data = await res.json();
+        const records = data.records || [];
+        const kategoriRes = await getKategori();
+        const kategoriMap = {};
+        kategoriRes.forEach((k) => (kategoriMap[k.id] = k.nama_kategori));
+
+        const container = document.getElementById("dataContainer");
+        if (!records.length) {
+          container.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5>Data Wisata</h5>
+              <button class="btn btn-success" onclick="tambah()">+ Tambah</button>
+            </div>
+            <p class="text-muted text-center">Belum ada data.</p>`;
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <h5>Data Wisata</h5>
+            <button class="btn btn-success" onclick="tambah()">+ Tambah</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle">
+              <thead class="table-success">
+                <tr>
+                  <th>ID</th>
+                  <th>Kategori</th>
+                  <th>Nama Wisata</th>
+                  <th>Lokasi</th>
+                  <th>Deskripsi</th>
+                  <th>Gambar</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${records
+                  .map(
+                    (r) => `
+                  <tr>
+                    <td>${r.id}</td>
+                    <td>${kategoriMap[r.id_kategori] || "-"}</td>
+                    <td>${r.nama_wisata}</td>
+                    <td>${r.lokasi}</td>
+                    <td>${r.deskripsi || "-"}</td>
+                    <td>${
+                      r.gambar
+                        ? `<img src="http://localhost/pariwisata_api/upload/${r.gambar}" width="80">`
+                        : "-"
+                    }</td>
+                    <td>
+                      <button class="btn btn-warning btn-sm me-1" onclick='edit(${JSON.stringify(
+                        r
+                      )})'><i class="bi bi-pencil"></i></button>
+                      <button class="btn btn-danger btn-sm" onclick="hapus(${
+                        r.id
+                      })"><i class="bi bi-trash"></i></button>
+                    </td>
+                  </tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      function tambah() {
+        document.getElementById("formWisata").reset();
+        document.getElementById("id").value = "";
+        loadDropdownKategori();
+        modal.show();
+      }
+
+      function edit(data) {
+        document.getElementById("id").value = data.id;
+        document.getElementById("nama_wisata").value = data.nama_wisata;
+        document.getElementById("lokasi").value = data.lokasi;
+        document.getElementById("deskripsi").value = data.deskripsi;
+        document.getElementById("gambar").value = data.gambar;
+        loadDropdownKategori(data.id_kategori);
+        modal.show();
+      }
+
+      async function hapus(id) {
+        if (!confirm("Yakin ingin menghapus data ini?")) return;
+        await fetch(API_BASE + "wisata/" + id, { method: "DELETE" });
+        loadData();
+      }
+
+      document
+        .getElementById("formWisata")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const id = document.getElementById("id").value;
+          const data = {
+            id_kategori: document.getElementById("id_kategori").value,
+            nama_wisata: document.getElementById("nama_wisata").value,
+            lokasi: document.getElementById("lokasi").value,
+            deskripsi: document.getElementById("deskripsi").value,
+            gambar: document.getElementById("gambar").value,
+          };
+
+          const method = id ? "PUT" : "POST";
+          const url = API_BASE + "wisata" + (id ? "/" + id : "");
+          await fetch(url, {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+
+          modal.hide();
+          loadData();
+        });
+
+      loadData();
+    </script>
+  </body>
+</html>

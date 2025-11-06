@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>CRUD Galeri Wisata</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      img.thumb {
+        height: 180px;
+        width: 100%;
+        object-fit: cover;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+
+  <body class="p-4 bg-light">
+    <h3 class="mb-4">Manajemen Galeri Wisata</h3>
+
+    <div id="list" class="row g-3 mb-4"></div>
+
+    <form id="form" class="card p-3 shadow-sm bg-white">
+      <input type="hidden" id="id" />
+      <input type="hidden" id="existing_file" />
+
+      <div class="mb-2">
+        <label class="form-label">Wisata Terkait</label>
+        <select id="id_wisata" class="form-select" required></select>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Keterangan</label>
+        <textarea id="keterangan" class="form-control" rows="3"></textarea>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">File Gambar</label>
+        <input
+          type="file"
+          id="file_gambar"
+          class="form-control"
+          accept="image/*"
+        />
+      </div>
+
+      <div>
+        <button class="btn btn-primary" type="submit">Simpan</button>
+        <button class="btn btn-secondary" type="button" id="resetBtn">
+          Reset
+        </button>
+      </div>
+    </form>
+
+    <script src="common.js"></script>
+    <script>
+      const TABLE_NAME = "galeri";
+
+      // === Muat daftar wisata untuk dropdown ===
+      async function loadWisataDropdown() {
+        try {
+          const data = await listRecords("wisata");
+          const select = document.getElementById("id_wisata");
+          select.innerHTML = '<option value="">-- Pilih Wisata --</option>';
+          (data.records || []).forEach((w) => {
+            select.innerHTML += `<option value="${w.id}">${w.nama_wisata}</option>`;
+          });
+        } catch (err) {
+          console.error("Gagal memuat wisata:", err);
+        }
+      }
+
+      // === Muat data galeri ===
+      async function loadData() {
+        try {
+          const data = await listRecords(TABLE_NAME);
+          const wisataList = await listRecords("wisata");
+
+          // Relasi wisata
+          const wisataMap = {};
+          (wisataList.records || []).forEach(
+            (w) => (wisataMap[String(w.id)] = w.nama_wisata)
+          );
+
+          const container = document.getElementById("list");
+          const records = data.records || [];
+
+          if (!records.length) {
+            container.innerHTML =
+              '<div class="text-muted">Belum ada data galeri</div>';
+            return;
+          }
+
+          container.innerHTML = records
+            .map(
+              (g) => `
+          <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+              <img src="http://localhost/pariwisata_api/uploads/${
+                g.file_gambar || "no.jpg"
+              }"
+                   class="thumb card-img-top"
+                   onerror="this.src='http://localhost/pariwisata_api/uploads/no.jpg'">
+              <div class="card-body">
+                <h5 class="card-title">${
+                  wisataMap[String(g.id_wisata)] || "-"
+                }</h5>
+                <p class="card-text">${g.keterangan || "-"}</p>
+                <div class="d-flex justify-content-between">
+                  <button class="btn btn-warning btn-sm" onclick="edit(${
+                    g.id
+                  })">Edit</button>
+                  <button class="btn btn-danger btn-sm" onclick="hapus(${
+                    g.id
+                  })">Hapus</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+            )
+            .join("");
+        } catch (err) {
+          console.error(err);
+          alert("❌ Gagal memuat data: " + err.message);
+        }
+      }
+
+      // === Simpan (Tambah/Edit) ===
+      document.getElementById("form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const id = document.getElementById("id").value.trim();
+        const existing_file = document
+          .getElementById("existing_file")
+          .value.trim();
+        const file = document.getElementById("file_gambar").files[0];
+
+        const data = {
+          id_wisata: document.getElementById("id_wisata").value || null,
+          keterangan: document.getElementById("keterangan").value.trim(),
+        };
+
+        try {
+          if (file) {
+            const uploaded = await uploadFile(file);
+            data.file_gambar = uploaded;
+          } else if (id && existing_file) {
+            data.file_gambar = existing_file;
+          }
+
+          Object.keys(data).forEach((k) => {
+            if (!data[k]) delete data[k];
+          });
+
+          if (id) {
+            await updateRecord(TABLE_NAME, id, data);
+            alert("✅ Data berhasil diperbarui");
+          } else {
+            await createRecord(TABLE_NAME, data);
+            alert("✅ Data berhasil ditambahkan");
+          }
+
+          document.getElementById("form").reset();
+          document.getElementById("id").value = "";
+          document.getElementById("existing_file").value = "";
+          loadData();
+        } catch (err) {
+          console.error(err);
+          alert("❌ Gagal menyimpan data: " + err.message);
+        }
+      });
+
+      // === Edit Data ===
+      async function edit(id) {
+        try {
+          const res = await getRecord(TABLE_NAME, id);
+          const g = res.record || res;
+
+          document.getElementById("id").value = g.id;
+          document.getElementById("id_wisata").value = g.id_wisata || "";
+          document.getElementById("keterangan").value = g.keterangan || "";
+          document.getElementById("existing_file").value = g.file_gambar || "";
+          document.getElementById("file_gambar").value = "";
+
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch (err) {
+          alert("❌ Gagal memuat data: " + err.message);
+        }
+      }
+
+      // === Hapus Data ===
+      async function hapus(id) {
+        if (!confirm("Yakin ingin menghapus data ini?")) return;
+        try {
+          await deleteRecord(TABLE_NAME, id);
+          loadData();
+        } catch (err) {
+          alert("❌ Gagal menghapus: " + err.message);
+        }
+      }
+
+      // === Reset Form ===
+      document.getElementById("resetBtn").onclick = () => {
+        document.getElementById("form").reset();
+        document.getElementById("id").value = "";
+        document.getElementById("existing_file").value = "";
+      };
+
+      // === Inisialisasi ===
+      loadWisataDropdown();
+      loadData();
+    </script>
+  </body>
+</html>
