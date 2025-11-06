@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>CRUD Ulasan Wisata</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .stars {
+        color: gold;
+        font-size: 1.1rem;
+      }
+    </style>
+  </head>
+
+  <body class="p-4 bg-light">
+    <h3 class="mb-4">Manajemen Ulasan Wisata</h3>
+
+    <div id="list" class="mb-4"></div>
+
+    <form id="form" class="card p-3 shadow-sm bg-white">
+      <input type="hidden" id="id" />
+
+      <div class="mb-2">
+        <label class="form-label">Wisata</label>
+        <select id="id_wisata" class="form-select" required></select>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">User</label>
+        <select id="id_user" class="form-select" required></select>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Rating</label>
+        <select id="rating" class="form-select" required>
+          <option value="">-- Pilih Rating --</option>
+          <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+          <option value="4">⭐⭐⭐⭐ (4)</option>
+          <option value="3">⭐⭐⭐ (3)</option>
+          <option value="2">⭐⭐ (2)</option>
+          <option value="1">⭐ (1)</option>
+        </select>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Komentar</label>
+        <textarea
+          id="komentar"
+          class="form-control"
+          rows="3"
+          required
+        ></textarea>
+      </div>
+
+      <div>
+        <button class="btn btn-primary" type="submit">Simpan</button>
+        <button class="btn btn-secondary" type="button" id="resetBtn">
+          Reset
+        </button>
+      </div>
+    </form>
+
+    <script src="common.js"></script>
+    <script>
+      const TABLE_NAME = "ulasan";
+
+      // === Dropdown wisata ===
+      async function loadWisataDropdown() {
+        const data = await listRecords("wisata");
+        const select = document.getElementById("id_wisata");
+        select.innerHTML = '<option value="">-- Pilih Wisata --</option>';
+        (data.records || []).forEach((w) => {
+          select.innerHTML += `<option value="${w.id}">${w.nama_wisata}</option>`;
+        });
+      }
+
+      // === Dropdown user ===
+      async function loadUserDropdown() {
+        const data = await listRecords("users");
+        const select = document.getElementById("id_user");
+        select.innerHTML = '<option value="">-- Pilih User --</option>';
+        (data.records || []).forEach((u) => {
+          select.innerHTML += `<option value="${u.id}">${u.nama}</option>`;
+        });
+      }
+
+      // === Konversi rating ke bintang ===
+      function getStars(rating) {
+        const filled = "⭐".repeat(rating);
+        const empty = "☆".repeat(5 - rating);
+        return `<span class="stars">${filled}${empty}</span>`;
+      }
+
+      // === Muat data ulasan ===
+      async function loadData() {
+        try {
+          const [ulasanRes, wisataRes, userRes] = await Promise.all([
+            listRecords(TABLE_NAME),
+            listRecords("wisata"),
+            listRecords("users"),
+          ]);
+
+          const wisataMap = {};
+          (wisataRes.records || []).forEach(
+            (w) => (wisataMap[w.id] = w.nama_wisata)
+          );
+          const userMap = {};
+          (userRes.records || []).forEach((u) => (userMap[u.id] = u.nama));
+
+          const records = ulasanRes.records || [];
+          const container = document.getElementById("list");
+
+          if (!records.length) {
+            container.innerHTML =
+              '<div class="text-muted">Belum ada ulasan</div>';
+            return;
+          }
+
+          container.innerHTML = `
+          <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Wisata</th>
+                <th>User</th>
+                <th>Rating</th>
+                <th>Komentar</th>
+                <th>Tanggal</th>
+                <th width="140">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${records
+                .map(
+                  (u) => `
+                <tr>
+                  <td>${u.id}</td>
+                  <td>${wisataMap[u.id_wisata] || "-"}</td>
+                  <td>${userMap[u.id_user] || "-"}</td>
+                  <td>${getStars(Number(u.rating))}</td>
+                  <td>${u.komentar}</td>
+                  <td>${
+                    u.tanggal
+                      ? new Date(u.tanggal).toLocaleString("id-ID")
+                      : "-"
+                  }</td>
+                  <td>
+                    <button class="btn btn-warning btn-sm me-1" onclick="edit(${
+                      u.id
+                    })">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="hapus(${
+                      u.id
+                    })">Hapus</button>
+                  </td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        `;
+        } catch (err) {
+          alert("❌ Gagal memuat data: " + err.message);
+        }
+      }
+
+      // === Simpan ===
+      document.getElementById("form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const id = document.getElementById("id").value.trim();
+        const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const data = {
+          id_user: document.getElementById("id_user").value,
+          id_wisata: document.getElementById("id_wisata").value,
+          rating: document.getElementById("rating").value,
+          komentar: document.getElementById("komentar").value.trim(),
+          tanggal: now,
+        };
+
+        try {
+          if (id) {
+            await updateRecord(TABLE_NAME, id, data);
+            alert("✅ Ulasan berhasil diperbarui");
+          } else {
+            await createRecord(TABLE_NAME, data);
+            alert("✅ Ulasan berhasil ditambahkan");
+          }
+          document.getElementById("form").reset();
+          document.getElementById("id").value = "";
+          loadData();
+        } catch (err) {
+          alert("❌ Gagal menyimpan data: " + err.message);
+        }
+      });
+
+      // === Edit ===
+      async function edit(id) {
+        const res = await getRecord(TABLE_NAME, id);
+        const u = res.record || res;
+        document.getElementById("id").value = u.id;
+        document.getElementById("id_user").value = u.id_user;
+        document.getElementById("id_wisata").value = u.id_wisata;
+        document.getElementById("rating").value = u.rating;
+        document.getElementById("komentar").value = u.komentar;
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      // === Hapus ===
+      async function hapus(id) {
+        if (!confirm("Yakin ingin menghapus data ini?")) return;
+        await deleteRecord(TABLE_NAME, id);
+        loadData();
+      }
+
+      document.getElementById("resetBtn").onclick = () => {
+        document.getElementById("form").reset();
+        document.getElementById("id").value = "";
+      };
+
+      // === Inisialisasi ===
+      loadWisataDropdown();
+      loadUserDropdown();
+      loadData();
+    </script>
+  </body>
+</html>

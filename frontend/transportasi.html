@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>CRUD Transportasi (Relasi Wisata)</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="p-4 bg-light">
+    <h3 class="mb-4">Manajemen Transportasi</h3>
+
+    <div id="list" class="mb-4"></div>
+
+    <form id="form" class="card p-3 shadow-sm bg-white">
+      <input type="hidden" id="id" />
+
+      <div class="mb-2">
+        <label class="form-label">Wisata Terkait</label>
+        <select id="id_wisata" class="form-select" required></select>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Jenis Transportasi</label>
+        <input id="jenis" class="form-control" required />
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Nama Operator</label>
+        <input id="nama_operator" class="form-control" required />
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Tarif</label>
+        <input id="tarif" type="number" class="form-control" required />
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Kontak</label>
+        <input id="kontak" class="form-control" />
+      </div>
+
+      <div>
+        <button class="btn btn-primary" type="submit">Simpan</button>
+        <button class="btn btn-secondary" type="button" id="resetBtn">
+          Reset
+        </button>
+      </div>
+    </form>
+
+    <script src="common.js"></script>
+    <script>
+      const TABLE_NAME = "transportasi";
+
+      // === Muat daftar wisata untuk dropdown ===
+      async function loadWisataDropdown() {
+        try {
+          const data = await listRecords("wisata");
+          const select = document.getElementById("id_wisata");
+          select.innerHTML = '<option value="">-- Pilih Wisata --</option>';
+          (data.records || []).forEach((w) => {
+            select.innerHTML += `<option value="${w.id}">${w.nama_wisata}</option>`;
+          });
+        } catch (err) {
+          console.error("Gagal memuat wisata:", err);
+        }
+      }
+
+      // === Muat data transportasi ===
+      async function loadData() {
+        try {
+          const data = await listRecords(TABLE_NAME);
+          const wisataList = await listRecords("wisata");
+          const wisataMap = {};
+          (wisataList.records || []).forEach(
+            (w) => (wisataMap[w.id] = w.nama_wisata)
+          );
+
+          const container = document.getElementById("list");
+          const records = data.records || [];
+
+          if (!records.length) {
+            container.innerHTML =
+              '<div class="text-muted">Belum ada data transportasi</div>';
+            return;
+          }
+
+          container.innerHTML = `
+          <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Wisata</th>
+                <th>Jenis</th>
+                <th>Operator</th>
+                <th>Tarif</th>
+                <th>Kontak</th>
+                <th width="140">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${records
+                .map(
+                  (t) => `
+                <tr>
+                  <td>${t.id}</td>
+                  <td>${wisataMap[t.id_wisata] || "-"}</td>
+                  <td>${t.jenis || "-"}</td>
+                  <td>${t.nama_operator || "-"}</td>
+                  <td>${
+                    t.tarif
+                      ? "Rp " + Number(t.tarif).toLocaleString("id-ID")
+                      : "-"
+                  }</td>
+                  <td>${t.kontak || "-"}</td>
+                  <td>
+                    <button class="btn btn-warning btn-sm me-1" onclick="edit(${
+                      t.id
+                    })">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="hapus(${
+                      t.id
+                    })">Hapus</button>
+                  </td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        `;
+        } catch (err) {
+          console.error(err);
+          alert("❌ Gagal memuat data: " + err.message);
+        }
+      }
+
+      // === Simpan (Tambah/Edit) ===
+      document.getElementById("form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const id = document.getElementById("id").value.trim();
+
+        const data = {
+          id_wisata: document.getElementById("id_wisata").value || null,
+          jenis: document.getElementById("jenis").value.trim(),
+          nama_operator: document.getElementById("nama_operator").value.trim(),
+          tarif: document.getElementById("tarif").value.trim(),
+          kontak: document.getElementById("kontak").value.trim(),
+        };
+
+        Object.keys(data).forEach((k) => {
+          if (!data[k]) delete data[k];
+        });
+
+        try {
+          if (id) {
+            await updateRecord(TABLE_NAME, id, data);
+            alert("✅ Data berhasil diperbarui");
+          } else {
+            await createRecord(TABLE_NAME, data);
+            alert("✅ Data berhasil ditambahkan");
+          }
+
+          document.getElementById("form").reset();
+          document.getElementById("id").value = "";
+          loadData();
+        } catch (err) {
+          console.error(err);
+          alert("❌ Gagal menyimpan data: " + err.message);
+        }
+      });
+
+      // === Edit Data ===
+      async function edit(id) {
+        try {
+          const res = await getRecord(TABLE_NAME, id);
+          const t = res.record || res;
+
+          document.getElementById("id").value = t.id;
+          document.getElementById("id_wisata").value = t.id_wisata || "";
+          document.getElementById("jenis").value = t.jenis || "";
+          document.getElementById("nama_operator").value =
+            t.nama_operator || "";
+          document.getElementById("tarif").value = t.tarif || "";
+          document.getElementById("kontak").value = t.kontak || "";
+
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch (err) {
+          alert("❌ Gagal memuat data: " + err.message);
+        }
+      }
+
+      // === Hapus Data ===
+      async function hapus(id) {
+        if (!confirm("Yakin ingin menghapus data ini?")) return;
+        try {
+          await deleteRecord(TABLE_NAME, id);
+          loadData();
+        } catch (err) {
+          alert("❌ Gagal menghapus: " + err.message);
+        }
+      }
+
+      // === Reset Form ===
+      document.getElementById("resetBtn").onclick = () => {
+        document.getElementById("form").reset();
+        document.getElementById("id").value = "";
+      };
+
+      // === Inisialisasi ===
+      loadWisataDropdown();
+      loadData();
+    </script>
+  </body>
+</html>

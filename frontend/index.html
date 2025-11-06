@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Sistem Informasi Pariwisata</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --green-1: #0f766e;
+        --green-2: #16a34a;
+      }
+      body {
+        font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+        background: #f4fdf6;
+      }
+      .navbar {
+        background: linear-gradient(90deg, var(--green-1), var(--green-2));
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+      }
+      .navbar-brand {
+        font-weight: 700;
+        color: #fff !important;
+      }
+      .nav-link {
+        color: #fff !important;
+        font-weight: 600;
+        margin: 0 8px;
+      }
+      .nav-link.active {
+        text-decoration: underline;
+        opacity: 0.95;
+      }
+      .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+      }
+      .preview-img {
+        max-height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-top: 8px;
+      }
+      .fade-in {
+        animation: fadeIn 0.45s ease both;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @media (max-width: 720px) {
+        .navbar .container {
+          padding-left: 8px;
+          padding-right: 8px;
+        }
+        .table-responsive {
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+      <div class="container">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+          <span style="font-size: 20px; margin-right: 8px">🌴</span>
+          <span>Sistem Informasi Pariwisata</span>
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navCollapse"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div
+          class="collapse navbar-collapse justify-content-center"
+          id="navCollapse"
+        >
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link active" href="#" data-page="dashboard"
+                >Dashboard</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="kategori_wisata"
+                >Kategori</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="wisata">Wisata</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="hotel">Hotel</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="kuliner">Kuliner</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="event">Event</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="transportasi"
+                >Transportasi</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="users">User</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="ulasan">Ulasan</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" data-page="favorit">Favorit</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="container my-4">
+      <div id="content" class="fade-in">
+        <h3 class="text-center fw-bold mb-4 text-success">
+          📊 Dashboard Pariwisata
+        </h3>
+        <div class="row g-4" id="dashboardCards"></div>
+      </div>
+    </main>
+
+    <!-- MODAL TAMBAH / EDIT -->
+    <div class="modal fade" id="modalTambah" tabindex="-1">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title" id="modalTitle">Tambah Data</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="formTambah" enctype="multipart/form-data"></form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Batal
+            </button>
+            <button type="submit" form="formTambah" class="btn btn-success">
+              Simpan
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // ---------- CONFIG ----------
+      const apiBase = "http://localhost/pariwisata_api/api.php/records/"; // sesuaikan bila perlu
+      const uploadBase = "http://localhost/pariwisata_api/upload.php"; // file upload endpoint
+      const imageBase = "http://localhost/pariwisata_api/uploads/"; // folder image public
+      const modal = new bootstrap.Modal(document.getElementById("modalTambah"));
+      const form = document.getElementById("formTambah");
+      let editId = null;
+      let currentTable = "";
+
+      // ---------- DEFAULT FIELDS PER TABLE ----------
+      const defaultFields = {
+        kategori_wisata: ["nama_kategori"],
+        wisata: [
+          "id_kategori",
+          "nama_wisata",
+          "lokasi",
+          "deskripsi",
+          "gambar",
+          "rating",
+          "created_at",
+        ],
+        hotel: [
+          "id_wisata",
+          "nama_hotel",
+          "alamat",
+          "fasilitas",
+          "harga",
+          "gambar",
+          "created_at",
+        ],
+        kuliner: [
+          "id_wisata",
+          "nama_kuliner",
+          "deskripsi",
+          "harga",
+          "gambar",
+          "created_at",
+        ],
+        event: [
+          "id_wisata",
+          "nama_event",
+          "tanggal",
+          "deskripsi",
+          "created_at",
+        ],
+        transportasi: [
+          "id_wisata",
+          "jenis_transportasi",
+          "nama",
+          "kontak",
+          "harga",
+          "created_at",
+        ],
+        users: ["nama_user", "email", "password", "created_at"],
+        ulasan: ["id_user", "id_wisata", "komentar", "rating", "created_at"],
+        favorit: ["id_user", "id_wisata", "created_at"],
+      };
+
+      // ---------- RELATION MAP ----------
+      // key: table, value: object(fieldName -> relatedTable)
+      const relasiMap = {
+        wisata: { id_kategori: "kategori_wisata" },
+        hotel: { id_wisata: "wisata" },
+        kuliner: { id_wisata: "wisata" },
+        event: { id_wisata: "wisata" },
+        transportasi: { id_wisata: "wisata" },
+        ulasan: { id_user: "users", id_wisata: "wisata" },
+        favorit: { id_user: "users", id_wisata: "wisata" },
+      };
+
+      // ---------- UTIL: fetch JSON safely ----------
+      async function fetchJson(url, opts) {
+        const res = await fetch(url, opts);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      }
+
+      // ---------- DASHBOARD ----------
+      async function loadDashboard() {
+        const content = document.getElementById("dashboardCards");
+        content.innerHTML = "";
+        for (const t of Object.keys(defaultFields)) {
+          try {
+            const d = await fetchJson(apiBase + t);
+            const count = Array.isArray(d.records) ? d.records.length : 0;
+            content.innerHTML += `
+              <div class="col-md-3 col-6">
+                <div class="card text-center p-4">
+                  <h6 class="mb-2 text-capitalize">${t}</h6>
+                  <div class="fs-2 fw-bold text-success">${count}</div>
+                </div>
+              </div>`;
+          } catch (e) {
+            content.innerHTML += `
+              <div class="col-md-3 col-6">
+                <div class="card text-center p-4">
+                  <h6 class="mb-2 text-capitalize">${t}</h6>
+                  <div class="fs-2 fw-bold text-danger">-</div>
+                </div>
+              </div>`;
+          }
+        }
+      }
+
+      // ---------- RELATION RESOLVER ----------
+      // returns object: { fieldName: { id: label, ... }, ... }
+      async function loadRelationMapsForTable(table) {
+        const map = {};
+        const rel = relasiMap[table] || {};
+        for (const field in rel) {
+          try {
+            const dt = await fetchJson(apiBase + rel[field]);
+            const records = dt.records || [];
+            const m = {};
+            for (const r of records) {
+              // choose good label
+              m[r.id] =
+                r.nama_kategori ??
+                r.nama_wisata ??
+                r.nama_user ??
+                r.nama_event ??
+                r.nama ??
+                r.nama_hotel ??
+                "Data";
+            }
+            map[field] = m;
+          } catch (e) {
+            map[field] = {};
+          }
+        }
+        return map;
+      }
+
+      // ---------- LOAD TABLE ----------
+      async function loadTable(table) {
+        currentTable = table;
+        const contentEl = document.getElementById("content");
+        contentEl.innerHTML = `<h3 class="text-center fw-bold mb-4 text-success">📋 Memuat ${table}...</h3>`;
+        try {
+          const data = await fetchJson(apiBase + table);
+          let records = data.records || [];
+          // load relation labels
+          const relMaps = await loadRelationMapsForTable(table);
+
+          // transform records (replace ids with names where applicable)
+          const displayRecords = records.map((r) => {
+            const out = { ...r };
+            for (const field in relMaps) {
+              if (out[field] !== undefined)
+                out[field] = relMaps[field][out[field]] ?? out[field];
+            }
+            return out;
+          });
+
+          // build UI
+          if (displayRecords.length === 0) {
+            contentEl.innerHTML = `
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="text-success fw-bold">📋 Data ${table}</h3>
+                <button class="btn btn-success" onclick="showForm('${table}')"><i class="bi bi-plus-circle"></i> Tambah</button>
+              </div>
+              <p class="text-center text-muted">Belum ada data ${table}</p>`;
+            return;
+          }
+
+          // table header
+          const keys = Object.keys(displayRecords[0]);
+          const ths = keys
+            .map((k) => `<th class="text-capitalize">${k}</th>`)
+            .join("");
+          const rows = displayRecords
+            .map((r) => {
+              const tds = keys
+                .map((k) => {
+                  const v = r[k];
+                  if (
+                    typeof v === "string" &&
+                    v.match(/\.(jpg|jpeg|png|gif)$/i)
+                  ) {
+                    return `<td><img src="${
+                      imageBase + v
+                    }" width="80" class="rounded"></td>`;
+                  }
+                  return `<td>${v ?? "-"}</td>`;
+                })
+                .join("");
+              // encode original raw record for editing (use encodeURIComponent(JSON.stringify(originalRecord)))
+              const original =
+                records.find((rr) => rr.id === r.id) ||
+                records.find(
+                  (rr) => JSON.stringify(rr) === JSON.stringify(r)
+                ) ||
+                r;
+              const encoded = encodeURIComponent(JSON.stringify(original));
+              return `<tr>${tds}<td style="width:120px">
+              <button class="btn btn-warning btn-sm me-1" onclick="editDataEncoded('${table}','${encoded}')"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="deleteData('${table}', ${original.id})"><i class="bi bi-trash"></i></button>
+            </td></tr>`;
+            })
+            .join("");
+
+          contentEl.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+              <h3 class="text-success fw-bold">📋 Data ${table}</h3>
+              <div>
+                <button class="btn btn-success" onclick="showForm('${table}')"><i class="bi bi-plus-circle"></i> Tambah</button>
+              </div>
+            </div>
+            <div class="table-responsive fade-in">
+              <table class="table table-bordered table-striped align-middle">
+                <thead class="table-success"><tr>${ths}<th>Aksi</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>`;
+        } catch (err) {
+          contentEl.innerHTML = `<p class="text-danger text-center">Gagal memuat data ${table}: ${err.message}</p>`;
+        }
+      }
+
+      // ---------- SHOW FORM (Tambah / Edit) ----------
+      async function showForm(table, row = null) {
+        form.dataset.table = table;
+        editId = row ? row.id : null;
+        document.getElementById("modalTitle").innerText = row
+          ? "Edit Data"
+          : "Tambah Data";
+        form.innerHTML = ""; // clear
+
+        // fields to display
+        const fields = defaultFields[table]
+          ? defaultFields[table].slice()
+          : row
+          ? Object.keys(row)
+          : ["nama"];
+        // remove auto fields from input (id, created_at)
+        const filtered = fields.filter((f) => f !== "id");
+
+        // if row present but missing some default fields, ensure those fields present
+        if (row) {
+          for (const f of Object.keys(row))
+            if (!filtered.includes(f) && f !== "id") filtered.push(f);
+        }
+
+        // load relation records for selects
+        const rel = relasiMap[table] || {};
+        const relData = {};
+        for (const f of Object.keys(rel)) {
+          try {
+            const dt = await fetchJson(apiBase + rel[f]);
+            relData[f] = dt.records || [];
+          } catch (e) {
+            relData[f] = [];
+          }
+        }
+
+        // build form inputs
+        for (const f of filtered) {
+          if (f === "created_at") continue; // skip created_at in form
+          if (rel[f]) {
+            // select from related table
+            const relatedRecords = relData[f] || [];
+            let options = `<option value="">-- Pilih ${rel[f]} --</option>`;
+            for (const r of relatedRecords) {
+              const label =
+                r.nama_kategori ??
+                r.nama_wisata ??
+                r.nama_user ??
+                r.nama_event ??
+                r.nama ??
+                r.nama_hotel ??
+                "Data";
+              const sel = row && row[f] == r.id ? "selected" : "";
+              options += `<option value="${r.id}" ${sel}>${label}</option>`;
+            }
+            form.innerHTML += `<div class="mb-3">
+              <label class="form-label text-capitalize">${f.replace(
+                /_/g,
+                " "
+              )}</label>
+              <select class="form-select" name="${f}" ${
+              f === "id_kategori" ? "required" : ""
+            }>${options}</select>
+            </div>`;
+            continue;
+          }
+
+          if (f === "gambar") {
+            const previewHtml =
+              row && row.gambar
+                ? `<img id="previewImg" class="preview-img" src="${
+                    imageBase + row.gambar
+                  }">`
+                : `<img id="previewImg" class="preview-img d-none">`;
+            form.innerHTML += `<div class="mb-3">
+              <label class="form-label">Gambar</label>
+              <input type="file" class="form-control" name="gambar" accept="image/*">
+              ${previewHtml}
+            </div>`;
+            continue;
+          }
+
+          // choose input type heuristics
+          let inputType = "text";
+          if (f.toLowerCase().includes("email")) inputType = "email";
+          if (f.toLowerCase().includes("password")) inputType = "password";
+          if (
+            f.toLowerCase().includes("tanggal") ||
+            f.toLowerCase().includes("date")
+          )
+            inputType = "date";
+          if (
+            f.toLowerCase().includes("harga") ||
+            f.toLowerCase().includes("rating")
+          )
+            inputType = "number";
+
+          const value = row ? row[f] ?? "" : "";
+          form.innerHTML += `<div class="mb-3">
+            <label class="form-label text-capitalize">${f.replace(
+              /_/g,
+              " "
+            )}</label>
+            <input type="${inputType}" class="form-control" name="${f}" value="${String(
+            value
+          ).replace(/"/g, "&quot;")}" ${
+            inputType === "number" ? 'step="any"' : ""
+          }>
+          </div>`;
+        }
+
+        // image preview listener
+        form
+          .querySelectorAll("input[type='file'][name='gambar']")
+          .forEach((inp) => {
+            inp.addEventListener("change", (e) => {
+              const file = e.target.files[0];
+              const preview = document.getElementById("previewImg");
+              if (!preview) return;
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  preview.src = reader.result;
+                  preview.classList.remove("d-none");
+                };
+                reader.readAsDataURL(file);
+              }
+            });
+          });
+
+        modal.show();
+      }
+
+      // helper to edit with encoded row
+      function editDataEncoded(table, encoded) {
+        try {
+          const row = JSON.parse(decodeURIComponent(encoded));
+          showForm(table, row);
+        } catch (e) {
+          alert("Gagal membuka data untuk edit: " + e.message);
+        }
+      }
+
+      // ---------- FORM SUBMIT (Tambah / Edit) ----------
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const table = form.dataset.table || currentTable;
+        if (!table) {
+          alert("Tabel tidak diketahui");
+          return;
+        }
+        const url = apiBase + table + (editId ? `/${editId}` : "");
+        const method = editId ? "PUT" : "POST";
+
+        // collect form fields but handle file upload separately
+        const fd = new FormData(form);
+        const fileInput = form.querySelector(
+          "input[type='file'][name='gambar']"
+        );
+        let uploadedFileName = null;
+
+        // If there's a file selected, upload it first (upload.php should return JSON { success: true, filename: '...' })
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+          const f = fileInput.files[0];
+          const upfd = new FormData();
+          upfd.append("file", f);
+          try {
+            const upRes = await fetch(uploadBase, {
+              method: "POST",
+              body: upfd,
+            });
+            const upJson = await upRes.json();
+            if (upJson && upJson.success && upJson.filename) {
+              uploadedFileName = upJson.filename;
+            } else {
+              alert("Gagal upload gambar: " + (upJson.message || "unknown"));
+              return;
+            }
+          } catch (e) {
+            alert("Gagal mengunggah gambar: " + e.message);
+            return;
+          }
+        }
+
+        // build plain object from form (skip file objects)
+        const obj = {};
+        for (const pair of fd.entries()) {
+          const k = pair[0];
+          const v = pair[1];
+          if (v instanceof File) continue; // skip files
+          obj[k] = v;
+        }
+        if (uploadedFileName) obj.gambar = uploadedFileName;
+
+        // send JSON to API
+        try {
+          const res = await fetch(url, {
+            method: method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(obj),
+          });
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error("HTTP " + res.status + " - " + txt);
+          }
+          modal.hide();
+          // refresh view
+          loadTable(table);
+        } catch (e) {
+          alert("Gagal menyimpan data: " + e.message);
+        }
+      });
+
+      // ---------- DELETE ----------
+      async function deleteData(table, id) {
+        if (!confirm("Yakin ingin menghapus data ini?")) return;
+        try {
+          const res = await fetch(apiBase + table + "/" + id, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          loadTable(table);
+        } catch (e) {
+          alert("Gagal menghapus: " + e.message);
+        }
+      }
+
+      // ---------- NAV HANDLER ----------
+      document.querySelectorAll(".nav-link").forEach((link) => {
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          const page = link.dataset.page;
+          document
+            .querySelectorAll(".nav-link")
+            .forEach((x) => x.classList.remove("active"));
+          link.classList.add("active");
+          if (page === "dashboard") {
+            document.getElementById("content").innerHTML = `
+              <h3 class="text-center fw-bold mb-4 text-success">📊 Dashboard Pariwisata</h3>
+              <div class="row g-4" id="dashboardCards"></div>`;
+            loadDashboard();
+          } else {
+            loadTable(page);
+          }
+        });
+      });
+
+      // ---------- INIT ----------
+      (async function init() {
+        await loadDashboard();
+        // show default table "wisata" on load for convenience
+        // you can change or remove this line
+        // loadTable('wisata');
+      })();
+    </script>
+  </body>
+</html>
